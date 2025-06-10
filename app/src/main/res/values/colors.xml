@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="primary_green">#4CAF50</color>
+    <color name="primary_dark_green">#388E3C</color>
+    <color name="gray_light">#F5F5F5</color>
+    <color name="gray_medium">#9E9E9E</color>
+    <color name="red_high">#F44336</color>
+    <color name="orange_medium">#FF9800</color>
+    <color name="green_low">#4CAF50</color>
+    <color name="high_badge_background">#FEE2E2</color>
+    <color name="medium_badge_background">#FEF3C7</color>
+    <color name="low_badge_background">#D1FAE5</color>
+    <color name="high_badge_text">#991B1B</color>
+    <color name="medium_badge_text">#92400E</color>
+    <color name="low_badge_text">#065F46</color>
+</resources>
