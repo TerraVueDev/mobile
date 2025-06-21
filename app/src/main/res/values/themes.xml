@@ -1,9 +1,24 @@
+<!-- Add this to your existing res/values/themes.xml file -->
+
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.TerraVue" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/primary_green</item>
+        <item name="colorPrimaryVariant">@color/primary_dark_green</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/primary_green</item>
+        <item name="android:statusBarColor">@color/primary_green</item>
     </style>
 
     <style name="Theme.TerraVue" parent="Base.Theme.TerraVue" />
+
+    <!-- Dialog theme for ServiceDetailsDialogFragment -->
+    <style name="Theme.TerraVue.Dialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="colorPrimary">@color/primary_green</item>
+        <item name="colorSecondary">@color/primary_green</item>
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
 </resources>

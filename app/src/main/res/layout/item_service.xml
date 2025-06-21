@@ -5,52 +5,116 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
-    app:cardElevation="1dp"
-    app:cardCornerRadius="12dp">
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="6dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="16dp"
+    android:foreground="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="18dp"
+        android:padding="20dp"
         android:background="@color/white">
 
+        <!-- App Icon -->
         <ImageView
             android:id="@+id/serviceIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:contentDescription="Service icon"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:contentDescription="@string/service_icon_desc"
+            android:scaleType="centerCrop"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
             tools:srcCompat="@tools:sample/avatars" />
 
+        <!-- Usage Frequency Indicator -->
+        <View
+            android:id="@+id/usageIndicator"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="8dp"
+            android:background="@color/green_low"
+            android:visibility="gone"
+            app:layout_constraintStart_toEndOf="@id/serviceIcon"
+            app:layout_constraintTop_toTopOf="@id/serviceIcon"
+            app:layout_constraintBottom_toBottomOf="@id/serviceIcon"
+            tools:visibility="visible" />
+
+        <!-- Service Name -->
         <TextView
             android:id="@+id/serviceName"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:text="Service name"
+            android:layout_marginEnd="12dp"
+            android:text="@string/service_name_placeholder"
             android:textSize="18sp"
             android:textStyle="normal"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/impactBadge"
-            app:layout_constraintStart_toEndOf="@+id/serviceIcon"
+            android:textColor="@color/black"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintStart_toEndOf="@id/usageIndicator"
+            app:layout_constraintEnd_toStartOf="@id/impactBadge"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/co2Estimate"
+            app:layout_constraintVertical_chainStyle="packed"
             tools:text="Netflix" />
 
+        <!-- CO2 Estimate -->
+        <TextView
+            android:id="@+id/co2Estimate"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/co2_estimate_placeholder"
+            android:textSize="12sp"
+            android:textColor="@color/gray_medium"
+            android:visibility="gone"
+            app:layout_constraintStart_toEndOf="@id/usageIndicator"
+            app:layout_constraintEnd_toStartOf="@id/impactBadge"
+            app:layout_constraintTop_toBottomOf="@id/serviceName"
+            app:layout_constraintBottom_toBottomOf="parent"
+            tools:visibility="visible"
+            tools:text="2.5g CO₂/day" />
+
+        <!-- Impact Badge -->
         <TextView
             android:id="@+id/impactBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@color/low_badge_background"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="6dp"
-            android:text="Low Impact"
+            android:background="@drawable/impact_badge_background"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:text="@string/impact_level_placeholder"
             android:textColor="@color/low_badge_text"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:textStyle="bold"
+            android:elevation="1dp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            tools:text="Low Impact" />
+
+        <!-- Eco Tips Indicator (for future enhancement) -->
+        <ImageView
+            android:id="@+id/ecoTipsIndicator"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:src="@drawable/ic_eco_tip"
+            android:contentDescription="@string/eco_tips_available"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@id/impactBadge"
+            app:layout_constraintTop_toBottomOf="@id/impactBadge"
+            tools:visibility="visible" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
+
 </androidx.cardview.widget.CardView>

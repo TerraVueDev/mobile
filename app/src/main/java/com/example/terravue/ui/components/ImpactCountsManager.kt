@@ -1,8 +1,8 @@
-package com.example.terravue.ui
+package com.example.terravue.ui.components
 
-import android.widget.TextView
-import com.example.terravue.models.ImpactLevel
-import com.example.terravue.models.Service
+import android.widget.TextView;
+import com.example.terravue.domain.models.ImpactLevel
+import com.example.terravue.domain.models.Service
 
 class ImpactCountsManager(
     private val highImpactCountText: TextView,

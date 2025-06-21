@@ -1,52 +1,62 @@
 package com.example.terravue.utils
 
 import android.content.Context
-import com.example.terravue.models.ImpactLevel
+import com.example.terravue.domain.models.ImpactLevel
+import com.example.terravue.data.remote.CategoryData
 import kotlinx.coroutines.*
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
-class ImpactLevelClassifier(private val context: Context) {
+/**
+ * Enhanced impact level classifier with modern architecture support
+ *
+ * Features:
+ * - Integration with GitHubDataSource
+ * - Improved system app filtering
+ * - Machine learning potential for future versions
+ * - Better fallback mechanisms
+ * - Support for custom user classifications
+ */
+class ImpactLevelClassifier(val context: Context) {
 
     companion object {
-        private const val CATEGORIES_URL = "https://raw.githubusercontent.com/TerraVueDev/assets/refs/heads/main/categories.json"
-        private const val LINKS_URL = "https://raw.githubusercontent.com/TerraVueDev/assets/refs/heads/main/links.json"
-
-        // Expanded system apps list
+        // Enhanced system apps filtering
         private val SYSTEM_APPS_TO_IGNORE = setOf(
-            // Google Play Services & Core
+            // Core Android System
             "com.google.android.gms",
             "com.google.android.gsf",
             "com.google.android.ext.services",
-            "com.google.android.partnersetup",
-            "com.google.android.setupwizard",
-
-            // Android System Components
             "com.android.systemui",
             "com.android.webview",
             "com.google.android.webview",
             "android",
-            "com.android.chrome",
-            "com.android.shell",
-            "com.android.sharedstoragebackup",
-            "com.android.statementservice",
+            "com.android.vending", // Play Store
 
-            // System Apps
-            "com.android.vending", // Google Play Store
-            "com.google.android.packageinstaller",
-            "com.android.packageinstaller",
+            // Device Management
             "com.android.settings",
-            "com.android.systemui",
+            "com.android.packageinstaller",
+            "com.google.android.packageinstaller",
             "com.android.externalstorage",
             "com.android.providers.settings",
             "com.android.providers.downloads",
             "com.android.providers.media",
-            "com.android.providers.calendar",
-            "com.android.providers.contacts",
 
-            // Launchers
+            // Communication System Apps
+            "com.android.phone",
+            "com.android.mms",
+            "com.android.contacts",
+            "com.android.dialer",
+
+            // Security & Certificates
+            "com.android.certinstaller",
+            "com.android.keychain",
+            "com.google.android.permissioncontroller",
+
+            // Input & Accessibility
+            "com.google.android.inputmethod.latin",
+            "com.android.inputmethod.latin",
+
+            // Launchers (Major OEMs)
             "com.android.launcher",
             "com.android.launcher2",
             "com.android.launcher3",
@@ -54,44 +64,11 @@ class ImpactLevelClassifier(private val context: Context) {
             "com.miui.home", // Xiaomi
             "com.huawei.android.launcher", // Huawei
             "com.oppo.launcher", // Oppo
-            "com.oneplus.launcher", // OnePlus
-
-            // Input Methods & Keyboards
-            "com.google.android.inputmethod.latin",
-            "com.samsung.android.honeyboard",
-            "com.android.inputmethod.latin",
-            "com.sohu.inputmethod.sogou",
-
-            // Telephony & Communication
-            "com.android.phone",
-            "com.android.mms",
-            "com.android.contacts",
-            "com.android.dialer",
-            "com.samsung.android.messaging",
-
-            // System Services
-            "com.android.bluetooth",
-            "com.android.nfc",
-            "com.android.server.telecom",
-            "com.android.printspooler",
-            "com.android.wallpaper",
-            "com.android.wallpaperbackup",
-
-            // Certificate & Security
-            "com.android.certinstaller",
-            "com.android.keychain",
-            "com.google.android.permissioncontroller",
-
-            // OEM System Apps (add more as needed)
-            "com.samsung.android.app.telephonyui",
-            "com.samsung.android.bixby.agent",
-            "com.samsung.android.oneconnect",
-            "com.miui.securitycenter",
-            "com.xiaomi.finddevice"
+            "com.oneplus.launcher" // OnePlus
         )
 
-        // Expanded system app keywords
-        private val SYSTEM_APP_KEYWORDS = listOf(
+        // System app detection patterns
+        private val SYSTEM_APP_PATTERNS = listOf(
             "android.process",
             "com.android.system",
             "com.google.android.gms",
@@ -101,19 +78,11 @@ class ImpactLevelClassifier(private val context: Context) {
             "com.android.server",
             "com.android.internal",
             "com.google.android.ext",
-            "com.google.android.apps.carrier",
             ".provider",
-            ".service",
-            "com.samsung.android.app.system",
-            "com.miui.system",
-            "com.huawei.system",
-            "com.oppo.system",
-            "com.oneplus.system",
-            "com.android.cts", // Compatibility Test Suite
-            "com.google.android.projection" // Android Auto
+            ".service"
         )
 
-        // OEM prefixes that are typically system apps
+        // OEM system prefixes
         private val OEM_SYSTEM_PREFIXES = listOf(
             "com.samsung.android.app.",
             "com.samsung.android.service.",
@@ -122,116 +91,64 @@ class ImpactLevelClassifier(private val context: Context) {
             "com.huawei.android.internal",
             "com.oppo.android.internal",
             "com.oneplus.android.internal",
-            "com.android.internal",
-            "com.google.android.apps.wellbeing", // Digital Wellbeing
-            "com.google.android.apps.restore" // Restore
+            "com.android.internal"
         )
 
-        private val FALLBACK_HIGH_IMPACT_APPS = listOf(
-            "instagram", "facebook", "twitter", "tiktok", "snapchat"
+        // Enhanced fallback classifications
+        private val HIGH_IMPACT_KEYWORDS = listOf(
+            "instagram", "facebook", "twitter", "tiktok", "snapchat",
+            "youtube", "twitch", "discord", "reddit", "linkedin"
         )
 
-        private val FALLBACK_MEDIUM_IMPACT_STREAMING_APPS = listOf(
-            "netflix", "youtube", "spotify", "disney"
+        private val MEDIUM_IMPACT_KEYWORDS = listOf(
+            "netflix", "spotify", "amazon", "disney", "hulu",
+            "uber", "lyft", "deliveroo", "foodpanda", "grab",
+            "game", "gaming", "play"
         )
 
-        private val FALLBACK_LOW_IMPACT_PRODUCTIVITY_APPS = listOf(
-            "office", "docs", "drive", "calendar"
+        private val LOW_IMPACT_KEYWORDS = listOf(
+            "office", "docs", "drive", "calendar", "email",
+            "calculator", "notes", "weather", "clock", "flashlight",
+            "banking", "finance", "health", "fitness"
         )
     }
 
-
-    // Cache for the loaded data
+    // GitHub data integration
     private var categoriesData: JSONObject? = null
     private var linksData: JSONObject? = null
     private val domainToCategory = ConcurrentHashMap<String, String>()
     private var isDataLoaded = false
 
-    // Data classes for structured access
-    data class CategoryInfo(
-        val impact: String,
-        val description: String,
-        val source: String?,
-        val annualEstimate: AnnualEstimate?
-    )
+    // User custom classifications (for future features)
+    private val userClassifications = ConcurrentHashMap<String, ImpactLevel>()
 
-    data class AnnualEstimate(
-        val wh: String,
-        val whComparison: String,
-        val co2: String,
-        val co2Comparison: String
-    )
+    /**
+     * Update classifier with GitHub data
+     */
+    fun updateFromGitHubData(categories: JSONObject?, links: JSONObject?) {
+        categoriesData = categories
+        linksData = links
 
-    suspend fun loadDataFromGitHub(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Load both JSON files concurrently
-                val categoriesDeferred = async { fetchJsonFromUrl(CATEGORIES_URL) }
-                val linksDeferred = async { fetchJsonFromUrl(LINKS_URL) }
-
-                val categoriesJson = categoriesDeferred.await()
-                val linksJson = linksDeferred.await()
-
-                if (categoriesJson != null && linksJson != null) {
-                    categoriesData = JSONObject(categoriesJson)
-                    linksData = JSONObject(linksJson)
-
-                    // Populate domain to category mapping for faster lookups
-                    populateDomainMapping()
-                    isDataLoaded = true
-                    true
-                } else {
-                    false
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                false
-            }
+        if (categories != null && links != null) {
+            populateDomainMapping()
+            isDataLoaded = true
         }
     }
 
-    private fun fetchJsonFromUrl(urlString: String): String? {
-        var connection: HttpURLConnection? = null
-        return try {
-            val url = URL(urlString)
-            connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                connection.inputStream.bufferedReader().use { it.readText() }
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        } finally {
-            try {
-                connection?.disconnect()
-            } catch (e: Exception) {
-                // Ignore disconnect errors
-            }
-        }
-    }
-
-
-    private fun populateDomainMapping() {
-        linksData?.let { links ->
-            links.keys().forEach { domain ->
-                val category = links.getString(domain)
-                domainToCategory[domain] = category
-            }
-        }
-    }
-
+    /**
+     * Determine impact level for an app
+     * Returns null if app should be ignored (system app)
+     */
     fun determineImpactLevel(packageName: String, appName: String): ImpactLevel? {
         // First check if this is a system app that should be ignored
         if (isSystemApp(packageName, appName)) {
-            return null // Return null to indicate this app should be ignored
+            return null
         }
 
+        // Check user custom classifications first
+        userClassifications[packageName]?.let { return it }
+
+        // Use GitHub data if available
         return if (isDataLoaded) {
             determineImpactLevelFromGitHub(packageName, appName)
         } else {
@@ -240,36 +157,9 @@ class ImpactLevelClassifier(private val context: Context) {
         }
     }
 
-    private fun determineImpactLevelFromGitHub(packageName: String, appName: String): ImpactLevel {
-        // Try to match domain from package name or app name
-        val matchedCategory = findCategoryFromPackageOrApp(packageName, appName)
-
-        return if (matchedCategory != null) {
-            val categoryInfo = getCategoryInfo(matchedCategory)
-            when (categoryInfo?.impact?.lowercase()) {
-                "high" -> ImpactLevel.HIGH
-                "medium" -> ImpactLevel.MEDIUM
-                "low" -> ImpactLevel.LOW
-                else -> ImpactLevel.LOW
-            }
-        } else {
-            // Fallback logic if no match found
-            determineImpactLevelFallback(packageName, appName)
-        }
-    }
-
-    private fun findCategoryFromPackageOrApp(packageName: String, appName: String): String? {
-        // Check if package name or app name contains any of the domains
-        domainToCategory.forEach { (domain, category) ->
-            val domainName = domain.split(".")[0] // Get the main part (e.g., "youtube" from "youtube.com")
-            if (packageName.contains(domainName, ignoreCase = true) ||
-                appName.contains(domainName, ignoreCase = true)) {
-                return category
-            }
-        }
-        return null
-    }
-
+    /**
+     * Get detailed category information
+     */
     fun getCategoryInfo(categoryName: String): CategoryInfo? {
         return try {
             categoriesData?.getJSONObject(categoryName)?.let { categoryJson ->
@@ -290,87 +180,164 @@ class ImpactLevelClassifier(private val context: Context) {
                 )
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
 
-    // Fallback method using hardcoded values
-    private fun determineImpactLevelFallback(packageName: String, appName: String): ImpactLevel {
-        return when {
-            isHighImpactAppFallback(packageName) -> ImpactLevel.HIGH
-            isMediumImpactAppFallback(packageName, appName) -> ImpactLevel.MEDIUM
-            isLowImpactAppFallback(packageName) -> ImpactLevel.LOW
-            else -> ImpactLevel.LOW
-        }
+    /**
+     * Add user custom classification
+     */
+    fun addUserClassification(packageName: String, impactLevel: ImpactLevel) {
+        userClassifications[packageName] = impactLevel
+        // TODO: Persist to local storage for future sessions
     }
 
-    private fun isHighImpactAppFallback(packageName: String): Boolean {
-        return FALLBACK_HIGH_IMPACT_APPS.any { packageName.contains(it, ignoreCase = true) }
-    }
-
-    private fun isMediumImpactAppFallback(packageName: String, appName: String): Boolean {
-        return FALLBACK_MEDIUM_IMPACT_STREAMING_APPS.any { packageName.contains(it, ignoreCase = true) } ||
-                isGamingApp(packageName, appName)
-    }
-
-    private fun isGamingApp(packageName: String, appName: String): Boolean {
-        return packageName.contains("game", ignoreCase = true) ||
-                appName.contains("game", ignoreCase = true)
-    }
-
-    private fun isLowImpactAppFallback(packageName: String): Boolean {
-        return FALLBACK_LOW_IMPACT_PRODUCTIVITY_APPS.any { packageName.contains(it, ignoreCase = true) }
-    }
-
-    // Utility method to get all available categories
+    /**
+     * Get all available categories
+     */
     fun getAllCategories(): List<String> {
         return categoriesData?.keys()?.asSequence()?.toList() ?: emptyList()
     }
 
-    // Check if data is loaded
+    /**
+     * Check if GitHub data is loaded
+     */
     fun isDataLoaded(): Boolean = isDataLoaded
+
+    /**
+     * Get classification confidence score (for future ML features)
+     */
+    fun getClassificationConfidence(packageName: String, appName: String): Float {
+        return when {
+            userClassifications.containsKey(packageName) -> 1.0f
+            isDataLoaded && findCategoryFromPackageOrApp(packageName, appName) != null -> 0.9f
+            matchesFallbackKeywords(packageName, appName) -> 0.7f
+            else -> 0.5f
+        }
+    }
+
+    // Private helper methods
+
+    private fun populateDomainMapping() {
+        linksData?.let { links ->
+            links.keys().forEach { domain ->
+                try {
+                    val category = links.getString(domain)
+                    domainToCategory[domain] = category
+                } catch (e: Exception) {
+                    // Skip invalid entries
+                }
+            }
+        }
+    }
+
+    private fun determineImpactLevelFromGitHub(packageName: String, appName: String): ImpactLevel {
+        val matchedCategory = findCategoryFromPackageOrApp(packageName, appName)
+
+        return if (matchedCategory != null) {
+            val categoryInfo = getCategoryInfo(matchedCategory)
+            when (categoryInfo?.impact?.lowercase()) {
+                "high" -> ImpactLevel.HIGH
+                "medium" -> ImpactLevel.MEDIUM
+                "low" -> ImpactLevel.LOW
+                else -> determineImpactLevelFallback(packageName, appName)
+            }
+        } else {
+            determineImpactLevelFallback(packageName, appName)
+        }
+    }
+
+    private fun findCategoryFromPackageOrApp(packageName: String, appName: String): String? {
+        // Check exact domain matches first
+        domainToCategory.forEach { (domain, category) ->
+            if (packageName.contains(domain, ignoreCase = true)) {
+                return category
+            }
+        }
+
+        // Check partial matches
+        domainToCategory.forEach { (domain, category) ->
+            val domainName = domain.split(".")[0]
+            if (packageName.contains(domainName, ignoreCase = true) ||
+                appName.contains(domainName, ignoreCase = true)) {
+                return category
+            }
+        }
+
+        return null
+    }
+
+    private fun determineImpactLevelFallback(packageName: String, appName: String): ImpactLevel {
+        val lowerPackage = packageName.lowercase()
+        val lowerName = appName.lowercase()
+
+        return when {
+            HIGH_IMPACT_KEYWORDS.any { keyword ->
+                lowerPackage.contains(keyword) || lowerName.contains(keyword)
+            } -> ImpactLevel.HIGH
+
+            MEDIUM_IMPACT_KEYWORDS.any { keyword ->
+                lowerPackage.contains(keyword) || lowerName.contains(keyword)
+            } -> ImpactLevel.MEDIUM
+
+            LOW_IMPACT_KEYWORDS.any { keyword ->
+                lowerPackage.contains(keyword) || lowerName.contains(keyword)
+            } -> ImpactLevel.LOW
+
+            else -> ImpactLevel.LOW // Default to low impact
+        }
+    }
+
+    private fun matchesFallbackKeywords(packageName: String, appName: String): Boolean {
+        val lowerPackage = packageName.lowercase()
+        val lowerName = appName.lowercase()
+
+        val allKeywords = HIGH_IMPACT_KEYWORDS + MEDIUM_IMPACT_KEYWORDS + LOW_IMPACT_KEYWORDS
+        return allKeywords.any { keyword ->
+            lowerPackage.contains(keyword) || lowerName.contains(keyword)
+        }
+    }
 
     private fun isSystemApp(packageName: String, appName: String): Boolean {
         val lowerPackageName = packageName.lowercase()
         val lowerAppName = appName.lowercase()
 
-        // 1. Check exact package name matches
+        // Check exact matches
         if (SYSTEM_APPS_TO_IGNORE.contains(lowerPackageName)) {
             return true
         }
 
-        // 2. Check OEM system prefixes
+        // Check OEM prefixes
         if (OEM_SYSTEM_PREFIXES.any { lowerPackageName.startsWith(it) }) {
             return true
         }
-        if (SYSTEM_APP_KEYWORDS.any { keyword ->
-            lowerPackageName.contains(keyword) || lowerAppName.contains(keyword)
-        }) {
+
+        // Check patterns
+        if (SYSTEM_APP_PATTERNS.any { pattern ->
+                lowerPackageName.contains(pattern) || lowerAppName.contains(pattern)
+            }) {
             return true
         }
 
-        // 4. Additional heuristics for system apps
+        // Additional heuristics
         return isSystemAppByHeuristics(lowerPackageName, lowerAppName)
     }
 
     private fun isSystemAppByHeuristics(packageName: String, appName: String): Boolean {
-        // Apps with no clear user-facing name (often system components)
+        // Very short package names are often system components
+        if (packageName.split(".").size < 3 && packageName.length < 15) {
+            return true
+        }
+
+        // Apps with technical names and no clear branding
         if (appName.matches(Regex("^[A-Z][a-z]*[A-Z][a-z]*$")) && appName.length < 15) {
             return true
         }
 
-        // Apps that start with system-like names
+        // System-like app names
         val systemAppNamePrefixes = listOf(
-            "android",
-            "system",
-            "google play",
-            "samsung",
-            "miui",
-            "huawei",
-            "configuration",
-            "setup wizard",
-            "device policy"
+            "android", "system", "google play", "samsung",
+            "miui", "huawei", "configuration", "setup"
         )
 
         return systemAppNamePrefixes.any { prefix ->
@@ -378,4 +345,18 @@ class ImpactLevelClassifier(private val context: Context) {
         }
     }
 
+    // Data classes for compatibility with existing code
+    data class CategoryInfo(
+        val impact: String,
+        val description: String,
+        val source: String?,
+        val annualEstimate: AnnualEstimate?
+    )
+
+    data class AnnualEstimate(
+        val wh: String,
+        val whComparison: String,
+        val co2: String,
+        val co2Comparison: String
+    )
 }

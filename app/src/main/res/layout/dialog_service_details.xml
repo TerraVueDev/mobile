@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Enhanced Header Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/card_background"
+            android:padding="20dp"
+            android:layout_marginBottom="20dp">
+
+            <ImageView
+                android:id="@+id/dialogServiceIcon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginEnd="16dp"
+                android:contentDescription="@string/service_icon_desc"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/dialogServiceName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:text="App Name" />
+
+                <TextView
+                    android:id="@+id/dialogPackageName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_medium"
+                    android:text="com.example.app" />
+
+                <TextView
+                    android:id="@+id/dialogImpactBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/impact_badge_background"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:text="Impact Level" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Impact Level Description -->
+        <TextView
+            android:id="@+id/impactDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/card_background"
+            android:padding="16dp"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginBottom="20dp"
+            android:text="Impact description will appear here" />
+
+        <!-- Enhanced Impact Details Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📊 Environmental Impact Analysis"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Daily Impact Cards -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/card_background"
+                android:padding="16dp"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🌍"
+                    android:textSize="20sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/dailyCO2Value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/red_high"
+                    android:text="0.0 g" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Daily CO₂"
+                    android:textSize="11sp"
+                    android:textColor="@color/gray_medium"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/card_background"
+                android:padding="16dp"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚡"
+                    android:textSize="20sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/dailyEnergyValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/orange_medium"
+                    android:text="0.0 Wh" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Daily Energy"
+                    android:textSize="11sp"
+                    android:textColor="@color/gray_medium"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Annual Impact Cards -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/card_background"
+                android:padding="16dp"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📅"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/annualCO2Value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/red_high"
+                    android:text="0.0 kg" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Annual CO₂"
+                    android:textSize="10sp"
+                    android:textColor="@color/gray_medium"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/card_background"
+                android:padding="16dp"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/annualEnergyValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/orange_medium"
+                    android:text="0.0 kWh" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Annual Energy"
+                    android:textSize="10sp"
+                    android:textColor="@color/gray_medium"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Carbon Footprint Breakdown -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔍 Detailed Analysis"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/carbonFootprintBreakdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/card_background"
+            android:padding="16dp"
+            android:textSize="12sp"
+            android:textColor="@color/black"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="20dp"
+            android:text="Carbon footprint breakdown will appear here" />
+
+        <!-- Environmental Comparisons Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📈 Real-World Comparisons"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/comparisonsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:nestedScrollingEnabled="false" />
+
+        <!-- Eco Suggestions Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💡 Eco-Friendly Recommendations"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/suggestionsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:nestedScrollingEnabled="false" />
+
+        <!-- Close Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/closeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Close"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/primary_green"
+            style="@style/Widget.Material3.Button" />
+
+    </LinearLayout>
+</ScrollView>

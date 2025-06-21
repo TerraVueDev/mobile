@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">TerraVue</string>
+    <string name="service_icon_desc">App icon</string>
+    <string name="service_name_placeholder">App Name</string>
+    <string name="impact_level_placeholder">Impact Level</string>
+    <string name="co2_estimate_placeholder">CO₂ estimate</string>
+    <string name="eco_tips_available">Eco tips available</string>
+    <string name="loading_impact_data">Loading environmental impact data...</string>
+    <string name="offline_mode">Offline mode - using cached data</string>
+    <string name="data_updated">Environmental data updated</string>
+    <string name="error_loading_data">Failed to load data</string>
 </resources>
