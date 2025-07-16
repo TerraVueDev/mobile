@@ -3,10 +3,12 @@ package com.example.terravue.data.repositories
 import android.content.Context
 import com.example.terravue.domain.models.Service
 import com.example.terravue.domain.models.ImpactLevel
+import com.example.terravue.domain.models.AIGeneratedContent
 import com.example.terravue.data.local.dao.ServiceDao
 import com.example.terravue.data.remote.GitHubDataSource
 import com.example.terravue.utils.ImpactLevelClassifier
 import com.example.terravue.services.ServiceDiscoveryManager
+import com.example.terravue.services.AIService
 import com.example.terravue.data.mappers.ServiceMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,44 +17,61 @@ import kotlinx.coroutines.flow.map
 import java.util.Date
 
 /**
- * Repository pattern implementation for Service data management
- *
- * Coordinates between:
- * - Local database (Room) for caching
- * - Remote GitHub data source for latest impact data
- * - System service discovery for installed apps
- * - Impact classification logic
- *
- * Provides offline-first architecture with network fallback
+ * Enhanced Repository with simplified AI integration
  */
 class ServiceRepository(
     private val context: Context,
     private val serviceDao: ServiceDao,
     private val gitHubDataSource: GitHubDataSource,
-    private val impactClassifier: ImpactLevelClassifier
+    private val impactClassifier: ImpactLevelClassifier,
+    private val aiService: AIService
 ) {
 
     /**
+     * Load services with AI-enhanced content (simplified approach)
+     */
+    suspend fun loadServicesWithAI(): Result<List<Service>> = withContext(Dispatchers.IO) {
+        try {
+            // First, load services normally
+            val result = loadServicesFromGitHub()
+
+            if (result.isSuccess) {
+                val services = result.getOrNull() ?: emptyList()
+
+                // Check if AI is available
+                if (aiService.isAIAvailable()) {
+                    // Enhance services with AI content (sequential for simplicity)
+                    val enhancedServices = enhanceServicesWithAISequential(services)
+                    cacheServices(enhancedServices)
+                    Result.success(enhancedServices)
+                } else {
+                    // AI not available, return regular services
+                    cacheServices(services)
+                    Result.success(services)
+                }
+            } else {
+                result
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Load services with latest GitHub data, cache locally
-     * Returns Result to handle success/failure states
      */
     suspend fun loadServicesFromGitHub(): Result<List<Service>> = withContext(Dispatchers.IO) {
         try {
-            // First, try to load latest impact data from GitHub
             val githubDataLoaded = gitHubDataSource.loadLatestData()
 
             if (githubDataLoaded) {
-                // Update classifier with new data
                 impactClassifier.updateFromGitHubData(
                     categories = gitHubDataSource.getCategoriesData(),
                     links = gitHubDataSource.getLinksData()
                 )
             }
 
-            // Discover installed apps using updated classifier
             val discoveredServices = discoverInstalledApps()
-
-            // Cache the results locally
             cacheServices(discoveredServices)
 
             Result.success(discoveredServices)
@@ -62,55 +81,188 @@ class ServiceRepository(
     }
 
     /**
-     * Load services using offline/cached data only
+     * Enhance services with AI content sequentially (simpler approach)
      */
+    private suspend fun enhanceServicesWithAISequential(services: List<Service>): List<Service> {
+        val enhancedServices = mutableListOf<Service>()
+
+        // Process first 3 services to avoid quota limits
+        val servicesToProcess = services.take(3)
+
+        servicesToProcess.forEachIndexed { index, service ->
+            try {
+                println("Enhancing service ${index + 1}/${servicesToProcess.size}: ${service.name}")
+
+                // Skip if service already has recent AI content
+                if (service.aiContent != null && !service.needsAIRefresh()) {
+                    enhancedServices.add(service)
+                    return@forEachIndexed
+                }
+
+                val enhancedService = generateAIContentForService(service)
+                enhancedServices.add(enhancedService)
+
+            } catch (e: Exception) {
+                println("AI generation failed for ${service.name}: ${e.message}")
+                enhancedServices.add(service) // Add original service
+            }
+        }
+
+        // Add remaining services without AI enhancement
+        enhancedServices.addAll(services.drop(10))
+
+        return enhancedServices
+    }
+
+    /**
+     * Generate AI content for a single service (sequential approach)
+     */
+    private suspend fun generateAIContentForService(service: Service): Service {
+        val dailyImpact = service.getDailyImpactEstimate()
+        val usageMinutes = service.usageStats?.dailyUsageMinutes
+
+        try {
+            // Generate AI content sequentially
+            val co2Comparison = aiService.generateCO2Comparison(
+                appName = service.name,
+                co2Value = "${String.format("%.1f", dailyImpact.co2Grams)}g",
+                impactLevel = service.impactLevel.name
+            )
+
+            val energyComparison = aiService.generateEnergyComparison(
+                appName = service.name,
+                energyValue = "${String.format("%.1f", dailyImpact.energyWh)}Wh",
+                impactLevel = service.impactLevel.name
+            )
+
+            val explanation = aiService.generateImpactExplanation(
+                appName = service.name,
+                impactLevel = service.impactLevel.displayName,
+                categoryInfo = service.categoryInfo?.description
+            )
+
+            val suggestions = aiService.generateEcoSuggestions(
+                appName = service.name,
+                impactLevel = service.impactLevel.name,
+                usageMinutes = usageMinutes
+            )
+
+            val annualProjection = aiService.generateAnnualProjection(
+                appName = service.name,
+                dailyCO2 = dailyImpact.co2Grams,
+                dailyEnergy = dailyImpact.energyWh
+            )
+
+            // Create AI content
+            val aiContent = AIGeneratedContent(
+                co2Comparison = co2Comparison,
+                energyComparison = energyComparison,
+                impactExplanation = explanation,
+                ecoSuggestions = suggestions,
+                annualProjection = annualProjection
+            )
+
+            return service.withAIContent(aiContent)
+
+        } catch (e: Exception) {
+            println("Failed to generate AI content for ${service.name}: ${e.message}")
+            return service
+        }
+    }
+
+    /**
+     * Refresh AI content for a specific service
+     */
+    suspend fun refreshAIContentForService(service: Service): Service = withContext(Dispatchers.IO) {
+        try {
+            if (aiService.isAIAvailable()) {
+                generateAIContentForService(service)
+            } else {
+                service
+            }
+        } catch (e: Exception) {
+            service
+        }
+    }
+
+    /**
+     * Refresh AI content for services that need updates
+     */
+    suspend fun refreshExpiredAIContent(): Int = withContext(Dispatchers.IO) {
+        try {
+            val services = getCachedServices()
+            val expiredServices = services.filter { it.needsAIRefresh() }.take(5) // Limit to 5
+
+            if (expiredServices.isEmpty()) return@withContext 0
+
+            val refreshedServices = enhanceServicesWithAISequential(expiredServices)
+
+            // Update cache with refreshed services
+            // Note: You might want to implement selective cache updates
+
+            refreshedServices.size
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    /**
+     * Get AI service statistics
+     */
+    suspend fun getAIServiceStats(): AIServiceStats = withContext(Dispatchers.IO) {
+        try {
+            val cacheStats = aiService.getCacheStats()
+            val services = getCachedServices()
+            val servicesWithAI = services.count { it.hasAIContent }
+            val expiredAIContent = services.count { it.needsAIRefresh() }
+
+            AIServiceStats(
+                isAIAvailable = aiService.isAIAvailable(),
+                totalServices = services.size,
+                servicesWithAI = servicesWithAI,
+                expiredAIContent = expiredAIContent,
+                cacheStats = cacheStats
+            )
+        } catch (e: Exception) {
+            AIServiceStats.default()
+        }
+    }
+
+    /**
+     * Clear AI cache
+     */
+    suspend fun clearAICache() {
+        aiService.clearCache()
+    }
+
+    // Original repository methods...
     suspend fun loadServicesOffline(): List<Service> = withContext(Dispatchers.IO) {
         try {
-            // Try cached data first
             val cachedServices = getCachedServices()
-
             if (cachedServices.isNotEmpty()) {
                 return@withContext cachedServices
             }
-
-            // If no cache, discover with offline classifier
             discoverInstalledApps()
         } catch (e: Exception) {
-            // Return empty list on any error
             emptyList()
         }
     }
 
-    /**
-     * Get cached services from local database
-     */
     suspend fun getCachedServices(): List<Service> = withContext(Dispatchers.IO) {
         try {
             val entities = serviceDao.getAllServices()
-            ServiceMapper.entitiesToDomain(entities) { packageName ->
-                // Icon provider function - you can enhance this to load actual icons
-                null
-            }
+            ServiceMapper.entitiesToDomain(entities) { packageName -> null }
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    /**
-     * Get services as Flow for reactive UI updates
-     */
     fun getServicesFlow(): Flow<List<Service>> {
         return serviceDao.getAllServicesFlow().map { entities ->
-            ServiceMapper.entitiesToDomain(entities) { packageName ->
-                // Icon provider function
-                null
-            }
+            ServiceMapper.entitiesToDomain(entities) { packageName -> null }
         }
     }
 
-    /**
-     * Search services by query
-     */
     suspend fun searchServices(query: String): List<Service> = withContext(Dispatchers.IO) {
         try {
             if (query.isBlank()) {
@@ -124,9 +276,6 @@ class ServiceRepository(
         }
     }
 
-    /**
-     * Get services by impact level
-     */
     suspend fun getServicesByImpactLevel(impactLevel: ImpactLevel): List<Service> = withContext(Dispatchers.IO) {
         try {
             val entities = serviceDao.getServicesByImpactLevel(impactLevel.name)
@@ -136,12 +285,8 @@ class ServiceRepository(
         }
     }
 
-    /**
-     * Update service usage statistics
-     */
     suspend fun updateServiceUsage(packageName: String, usageMinutes: Int) = withContext(Dispatchers.IO) {
         try {
-            // Calculate new CO2 and energy values based on usage
             val dailyCO2 = when {
                 usageMinutes > 120 -> 2.5 * (usageMinutes / 60.0)
                 usageMinutes > 60 -> 1.0 * (usageMinutes / 60.0)
@@ -160,9 +305,6 @@ class ServiceRepository(
         }
     }
 
-    /**
-     * Delete old cached data (cleanup)
-     */
     suspend fun cleanupOldData(olderThanDays: Int = 7) = withContext(Dispatchers.IO) {
         try {
             val cutoffDate = Date(System.currentTimeMillis() - (olderThanDays * 24 * 60 * 60 * 1000L))
@@ -172,143 +314,60 @@ class ServiceRepository(
         }
     }
 
-    /**
-     * Get environmental impact summary statistics
-     */
-    suspend fun getImpactSummary(): ImpactSummary = withContext(Dispatchers.IO) {
-        try {
-            val allServices = getCachedServices()
-
-            ImpactSummary(
-                totalApps = allServices.size,
-                highImpactCount = allServices.count { it.impactLevel == ImpactLevel.HIGH },
-                mediumImpactCount = allServices.count { it.impactLevel == ImpactLevel.MEDIUM },
-                lowImpactCount = allServices.count { it.impactLevel == ImpactLevel.LOW },
-                estimatedDailyCO2 = calculateTotalDailyCO2(allServices),
-                estimatedDailyEnergy = calculateTotalDailyEnergy(allServices),
-                lastUpdated = Date()
-            )
-        } catch (e: Exception) {
-            ImpactSummary.empty()
-        }
-    }
-
     // Private helper methods
-
-    /**
-     * Discover installed apps using ServiceDiscoveryManager
-     * ServiceDiscoveryManager now returns domain Service objects directly
-     */
     private suspend fun discoverInstalledApps(): List<Service> {
         val discoveryManager = ServiceDiscoveryManager(
             context = context,
             impactClassifier = impactClassifier
         )
-
-        // ServiceDiscoveryManager.getInstalledServices() now returns List<Service> (domain models)
-        // No conversion needed since we updated ServiceDiscoveryManager to return domain models
         return discoveryManager.getInstalledServices()
     }
 
-    /**
-     * Cache services to local database
-     */
     private suspend fun cacheServices(services: List<Service>) {
         try {
-            // Clear old cache
             serviceDao.clearAllServices()
-
-            // Convert domain models to entities and insert
             val entities = ServiceMapper.domainToEntities(services)
             serviceDao.insertServices(entities)
         } catch (e: Exception) {
-            // Log error but don't fail the whole operation
             println("Failed to cache services: ${e.message}")
         }
     }
-
-    /**
-     * Calculate total daily CO2 emissions
-     */
-    private fun calculateTotalDailyCO2(services: List<Service>): Double {
-        return services.sumOf { service ->
-            service.getDailyImpactEstimate().co2Grams
-        }
-    }
-
-    /**
-     * Calculate total daily energy consumption
-     */
-    private fun calculateTotalDailyEnergy(services: List<Service>): Double {
-        return services.sumOf { service ->
-            service.getDailyImpactEstimate().energyWh
-        }
-    }
 }
 
 /**
- * Data class for impact summary statistics
+ * Statistics about AI service usage
  */
-data class ImpactSummary(
-    val totalApps: Int,
-    val highImpactCount: Int,
-    val mediumImpactCount: Int,
-    val lowImpactCount: Int,
-    val estimatedDailyCO2: Double, // grams
-    val estimatedDailyEnergy: Double, // watt-hours
-    val lastUpdated: Date
+data class AIServiceStats(
+    val isAIAvailable: Boolean,
+    val totalServices: Int,
+    val servicesWithAI: Int,
+    val expiredAIContent: Int,
+    val cacheStats: AIService.CacheStats
 ) {
     companion object {
-        fun empty() = ImpactSummary(
-            totalApps = 0,
-            highImpactCount = 0,
-            mediumImpactCount = 0,
-            lowImpactCount = 0,
-            estimatedDailyCO2 = 0.0,
-            estimatedDailyEnergy = 0.0,
-            lastUpdated = Date()
+        fun default() = AIServiceStats(
+            isAIAvailable = false,
+            totalServices = 0,
+            servicesWithAI = 0,
+            expiredAIContent = 0,
+            cacheStats = AIService.CacheStats(
+                totalEntries = 0,
+                validEntries = 0,
+                expiredEntries = 0,
+                requestCount = 0,
+                quotaExceeded = false
+            )
         )
     }
 
-    /**
-     * Get annual projections
-     */
-    fun getAnnualProjections(): AnnualProjections {
-        return AnnualProjections(
-            co2Kg = (estimatedDailyCO2 * 365) / 1000,
-            energyKwh = (estimatedDailyEnergy * 365) / 1000,
-            equivalentTreesNeeded = ((estimatedDailyCO2 * 365) / 22000).toInt()
-        )
-    }
-}
+    val aiCoveragePercentage: Float
+        get() = if (totalServices > 0) (servicesWithAI.toFloat() / totalServices) * 100 else 0f
 
-/**
- * Annual environmental impact projections
- */
-data class AnnualProjections(
-    val co2Kg: Double,
-    val energyKwh: Double,
-    val equivalentTreesNeeded: Int
-) {
-    fun getHumanReadableComparisons(): List<String> {
-        val comparisons = mutableListOf<String>()
-
-        when {
-            co2Kg > 1000 -> comparisons.add("Like driving ${String.format("%.0f", co2Kg * 4.6)} km per year")
-            co2Kg > 100 -> comparisons.add("Like ${String.format("%.0f", co2Kg / 2.3)} days of breathing")
-            else -> comparisons.add("Less than a short car trip")
+    val quotaStatus: String
+        get() = when {
+            cacheStats.quotaExceeded -> "Quota Exceeded"
+            cacheStats.requestCount >= 10 -> "Session Limit Reached"
+            cacheStats.requestCount > 5 -> "Approaching Limit (${cacheStats.requestCount}/10)"
+            else -> "Available (${cacheStats.requestCount}/10)"
         }
-
-        when {
-            energyKwh > 100 -> comparisons.add("Like powering a home for ${String.format("%.1f", energyKwh / 30)} days")
-            energyKwh > 10 -> comparisons.add("Like charging a laptop ${String.format("%.0f", energyKwh / 0.05)} times")
-            else -> comparisons.add("Minimal energy impact")
-        }
-
-        if (equivalentTreesNeeded > 0) {
-            comparisons.add("Plant $equivalentTreesNeeded trees to offset this impact")
-        }
-
-        return comparisons
-    }
 }

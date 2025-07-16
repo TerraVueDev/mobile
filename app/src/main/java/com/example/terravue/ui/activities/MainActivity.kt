@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ProgressBar
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +16,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.example.terravue.R
 import com.example.terravue.ui.adapters.ServiceAdapter
 import com.example.terravue.ui.viewmodels.MainViewModel
@@ -23,18 +26,23 @@ import com.example.terravue.data.repositories.ServiceRepository
 import com.example.terravue.data.local.AppDatabase
 import com.example.terravue.data.remote.GitHubDataSource
 import com.example.terravue.utils.ImpactLevelClassifier
+import com.example.terravue.services.AIService
 import com.example.terravue.ui.components.ImpactCountsManager
 import com.example.terravue.ui.dialogs.ServiceDetailsDialogFragment
 import kotlinx.coroutines.launch
 
 /**
- * MainActivity - Entry point for TerraVue environmental impact tracker
+ * Enhanced MainActivity with AI-powered environmental impact insights
  *
- * This activity displays user's installed apps categorized by their environmental impact:
- * - High Impact: Social media, entertainment apps with high energy consumption
- * - Medium Impact: Streaming, gaming apps with moderate energy usage
- * - Low Impact: Productivity, utility apps with minimal energy footprint
+ * New Features:
+ * - AI-generated content for app descriptions and comparisons
+ * - Smart refresh system for AI content
+ * - AI service status indicators
+ * - Enhanced user experience with personalized content
  */
+private fun updateLoadingState(isLoading: Boolean) {
+    // Main loading state - you can add loading indicator here if needed
+}
 class MainActivity : AppCompatActivity() {
 
     // UI Components
@@ -44,17 +52,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var noResultsTextView: TextView
     private lateinit var impactCountsManager: ImpactCountsManager
 
-    // ViewModel using modern Android Architecture
+    // ViewModel with AI support
     private val viewModel: MainViewModel by viewModels {
-        ViewModelFactory(
-            context = this,
-            serviceRepository = ServiceRepository(
-                context = this,
-                serviceDao = AppDatabase.getDatabase(this).serviceDao(),
-                gitHubDataSource = GitHubDataSource(),
-                impactClassifier = ImpactLevelClassifier(this)
-            )
-        )
+        ViewModelFactory(context = this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,15 +62,7 @@ class MainActivity : AppCompatActivity() {
         setupActivity()
         initializeComponents()
         observeViewModel()
-//        loadInitialData()lifecycleScope.launch {
-//            try {
-//                val database = AppDatabase.getDatabase(this@MainActivity)
-//                val count = database.serviceDao().getTotalServicesCount()
-//                Toast.makeText(this@MainActivity, "Database ready! Services: $count", Toast.LENGTH_SHORT).show()
-//            } catch (e: Exception) {
-//                Toast.makeText(this@MainActivity, "Database error: ${e.message}", Toast.LENGTH_LONG).show()
-//            }
-//        }
+        loadInitialData()
     }
 
     private fun setupActivity() {
@@ -102,15 +94,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         servicesAdapter = ServiceAdapter { service ->
-            // Handle service click - show detailed impact information
             viewModel.showServiceDetails(service)
         }
 
         servicesRecyclerView.apply {
             adapter = servicesAdapter
             layoutManager = LinearLayoutManager(this@MainActivity)
-
-            // Add recycling optimizations for better performance
             setHasFixedSize(true)
             setItemViewCacheSize(20)
         }
@@ -134,6 +123,8 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    // Remove all AI-related setup methods
+
     private fun observeViewModel() {
         // Observe filtered services for RecyclerView updates
         lifecycleScope.launch {
@@ -147,8 +138,7 @@ class MainActivity : AppCompatActivity() {
         // Observe loading state
         lifecycleScope.launch {
             viewModel.isLoading.collect { isLoading ->
-                // Show/hide loading indicator
-                // You can add a progress bar to the layout if needed
+                updateLoadingState(isLoading)
             }
         }
 
@@ -183,8 +173,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadInitialData() {
-        viewModel.loadServices()
+        viewModel.loadServicesWithAI() // Enhanced method with AI support
     }
+
+    // Remove all AI-related UI methods
 
     private fun updateEmptyState(isEmpty: Boolean) {
         noResultsTextView.visibility = if (isEmpty) View.VISIBLE else View.GONE
@@ -200,14 +192,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showServiceDetailsDialog(service: com.example.terravue.domain.models.Service) {
-        // Create and show a detailed dialog with environmental impact information
         val dialogFragment = ServiceDetailsDialogFragment.newInstance(service)
         dialogFragment.show(supportFragmentManager, "service_details")
     }
 
     override fun onResume() {
         super.onResume()
-        // Refresh data when returning to app (in case user installed/uninstalled apps)
+        // Refresh data when returning to app
         viewModel.refreshServices()
     }
 

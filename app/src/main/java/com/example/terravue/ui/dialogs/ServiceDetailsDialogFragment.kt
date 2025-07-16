@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
@@ -78,10 +79,10 @@ class ServiceDetailsDialogFragment : DialogFragment() {
 
     private fun setupViews(view: View) {
         setupHeader(view)
+        setupImpactHeader(view)
+        setupEnvironmentalFactors(view)
         setupImpactDetails(view)
-        setupEnvironmentalComparisons(view)
         setupEcoSuggestions(view)
-        setupCarbonFootprintBreakdown(view)
         setupActionButtons(view)
     }
 
@@ -89,20 +90,94 @@ class ServiceDetailsDialogFragment : DialogFragment() {
         val serviceIcon = view.findViewById<ImageView>(R.id.dialogServiceIcon)
         val serviceName = view.findViewById<TextView>(R.id.dialogServiceName)
         val packageName = view.findViewById<TextView>(R.id.dialogPackageName)
-        val impactBadge = view.findViewById<TextView>(R.id.dialogImpactBadge)
 
         serviceName.text = service.name
         packageName?.text = service.packageName
 
         // Load app icon
         loadDialogIcon(serviceIcon, service.packageName)
+    }
 
-        // Style impact badge
-        impactBadge.text = service.impactLevel.displayName
-        val badgeColor = ContextCompat.getColor(requireContext(), service.impactLevel.bgColorResId)
-        val textColor = ContextCompat.getColor(requireContext(), service.impactLevel.textColorResId)
-        impactBadge.background?.setTint(badgeColor)
-        impactBadge.setTextColor(textColor)
+    private fun setupImpactHeader(view: View) {
+        val impactHeaderSection = view.findViewById<LinearLayout>(R.id.impactHeaderSection)
+        val impactLabel = view.findViewById<TextView>(R.id.dialogImpactLabel)
+
+        // Set impact text and color like browser extension
+        impactLabel.text = "${service.impactLevel.displayName.lowercase()}"
+
+        // Update background color based on impact level
+        val backgroundColor = ContextCompat.getColor(requireContext(), when(service.impactLevel) {
+            com.example.terravue.domain.models.ImpactLevel.HIGH -> R.color.red_high
+            com.example.terravue.domain.models.ImpactLevel.MEDIUM -> R.color.orange_medium
+            com.example.terravue.domain.models.ImpactLevel.LOW -> R.color.primary_green
+        })
+        impactHeaderSection.setBackgroundColor(backgroundColor)
+    }
+
+    private fun setupEnvironmentalFactors(view: View) {
+        val carbonFootprintDesc = view.findViewById<TextView>(R.id.carbonFootprintDesc)
+        val powerConsumptionDesc = view.findViewById<TextView>(R.id.powerConsumptionDesc)
+        val impactExplanationTitle = view.findViewById<TextView>(R.id.impactExplanationTitle)
+        val impactExplanationDesc = view.findViewById<TextView>(R.id.impactExplanationDesc)
+
+        val dailyImpact = service.getDailyImpactEstimate()
+        val annualCO2 = dailyImpact.co2Grams * 365
+        val annualEnergy = dailyImpact.energyWh * 365
+
+        // Carbon Footprint description
+        val co2Description = "${service.name}'s annual CO2 emissions are estimated to be equivalent to ${String.format("%.1f", annualCO2/1000)}kg annually."
+        carbonFootprintDesc?.text = co2Description
+
+        // Power Consumption description
+        val energyDescription = "${service.name}'s annual power consumption is roughly equivalent to ${String.format("%.1f", annualEnergy/1000)}kWh annually."
+        powerConsumptionDesc?.text = energyDescription
+
+        // Impact Explanation
+        impactExplanationTitle?.text = "Why ${service.name} has a ${service.impactLevel.displayName.lowercase()} impact?"
+        val explanation = "${service.name}'s ${service.impactLevel.displayName.lowercase()} environmental impact comes from ${getDefaultExplanation(service.impactLevel)}."
+        impactExplanationDesc?.text = explanation
+    }
+
+    private fun getDefaultExplanation(impactLevel: com.example.terravue.domain.models.ImpactLevel): String {
+        return when (impactLevel) {
+            com.example.terravue.domain.models.ImpactLevel.HIGH -> "constant data streaming, server processing, and high energy consumption"
+            com.example.terravue.domain.models.ImpactLevel.MEDIUM -> "moderate data usage and server communication"
+            com.example.terravue.domain.models.ImpactLevel.LOW -> "minimal data usage and efficient processing"
+        }
+    }
+
+    private fun setupImpactDetails(view: View) {
+        val dailyImpact = service.getDailyImpactEstimate()
+
+        // Update compact daily/annual values
+        view.findViewById<TextView>(R.id.dailyCO2Value)?.text =
+            String.format("%.1fg", dailyImpact.co2Grams)
+        view.findViewById<TextView>(R.id.dailyEnergyValue)?.text =
+            String.format("%.1fWh", dailyImpact.energyWh)
+
+        val annualCO2 = dailyImpact.co2Grams * 365 / 1000
+        val annualEnergy = dailyImpact.energyWh * 365 / 1000
+
+        view.findViewById<TextView>(R.id.annualCO2Value)?.text =
+            String.format("%.1fkg", annualCO2)
+        view.findViewById<TextView>(R.id.annualEnergyValue)?.text =
+            String.format("%.1fkWh", annualEnergy)
+    }
+
+    private fun setupEcoSuggestions(view: View) {
+        val suggestionsRecyclerView = view.findViewById<RecyclerView>(R.id.suggestionsRecyclerView)
+        if (suggestionsRecyclerView != null) {
+            val suggestions = getEnhancedSuggestions()
+
+            suggestionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+            suggestionsRecyclerView.adapter = SuggestionsAdapter(suggestions)
+        }
+    }
+
+    private fun setupActionButtons(view: View) {
+        view.findViewById<MaterialButton>(R.id.closeButton)?.setOnClickListener {
+            dismiss()
+        }
     }
 
     private fun loadDialogIcon(imageView: ImageView, packageName: String) {
@@ -126,203 +201,63 @@ class ServiceDetailsDialogFragment : DialogFragment() {
         }
     }
 
-    // ... rest of the dialog methods remain the same as in the previous implementation
-    private fun setupImpactDetails(view: View) {
-        val dailyImpact = service.getDailyImpactEstimate()
-
-        view.findViewById<TextView>(R.id.dailyCO2Value)?.text =
-            String.format("%.1f g", dailyImpact.co2Grams)
-        view.findViewById<TextView>(R.id.dailyEnergyValue)?.text =
-            String.format("%.1f Wh", dailyImpact.energyWh)
-
-        val annualCO2 = dailyImpact.co2Grams * 365 / 1000
-        val annualEnergy = dailyImpact.energyWh * 365 / 1000
-
-        view.findViewById<TextView>(R.id.annualCO2Value)?.text =
-            String.format("%.1f kg", annualCO2)
-        view.findViewById<TextView>(R.id.annualEnergyValue)?.text =
-            String.format("%.1f kWh", annualEnergy)
-
-        view.findViewById<TextView>(R.id.impactDescription)?.text = service.impactLevel.description
-    }
-
-    private fun setupEnvironmentalComparisons(view: View) {
-        val comparisonsRecyclerView = view.findViewById<RecyclerView>(R.id.comparisonsRecyclerView)
-        if (comparisonsRecyclerView != null) {
-            val dailyImpact = service.getDailyImpactEstimate()
-            val comparisons = getEnhancedComparisons(dailyImpact)
-
-            comparisonsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-            comparisonsRecyclerView.adapter = EnhancedComparisonsAdapter(comparisons)
-        }
-    }
-
-    private fun setupEcoSuggestions(view: View) {
-        val suggestionsRecyclerView = view.findViewById<RecyclerView>(R.id.suggestionsRecyclerView)
-        if (suggestionsRecyclerView != null) {
-            val suggestions = getEnhancedSuggestions()
-
-            suggestionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-            suggestionsRecyclerView.adapter = EnhancedSuggestionsAdapter(suggestions)
-        }
-    }
-
-    private fun setupCarbonFootprintBreakdown(view: View) {
-        val footprintBreakdown = view.findViewById<TextView>(R.id.carbonFootprintBreakdown)
-        if (footprintBreakdown != null) {
-            val dailyImpact = service.getDailyImpactEstimate()
-            val breakdown = generateCarbonFootprintBreakdown(dailyImpact)
-            footprintBreakdown.text = breakdown
-        }
-    }
-
-    private fun setupActionButtons(view: View) {
-        view.findViewById<MaterialButton>(R.id.closeButton)?.setOnClickListener {
-            dismiss()
-        }
-    }
-
-    private fun getEnhancedComparisons(dailyImpact: com.example.terravue.domain.models.DailyImpact): List<ComparisonItem> {
-        val comparisons = mutableListOf<ComparisonItem>()
-        val co2 = dailyImpact.co2Grams
-        val energy = dailyImpact.energyWh
-
-        // CO2 Comparisons
-        when {
-            co2 > 5 -> comparisons.add(
-                ComparisonItem(
-                    "🚗 Like driving ${String.format("%.1f", co2 * 0.004)} km in a car",
-                    R.drawable.ic_car,
-                    "Transportation"
-                )
-            )
-            co2 > 1 -> comparisons.add(
-                ComparisonItem(
-                    "📱 Like charging your phone ${String.format("%.0f", co2 * 0.8)} times",
-                    R.drawable.ic_phone,
-                    "Electronics"
-                )
-            )
-            else -> comparisons.add(
-                ComparisonItem(
-                    "🌱 Very low impact - less than a deep breath",
-                    R.drawable.ic_eco_leaf,
-                    "Minimal"
-                )
-            )
-        }
-
-        // Energy Comparisons
-        when {
-            energy > 10 -> comparisons.add(
-                ComparisonItem(
-                    "💡 Like running an LED bulb for ${String.format("%.0f", energy * 100)} minutes",
-                    R.drawable.ic_lightbulb,
-                    "Lighting"
-                )
-            )
-            energy > 5 -> comparisons.add(
-                ComparisonItem(
-                    "🔋 Like half a smartphone battery cycle",
-                    R.drawable.ic_phone,
-                    "Battery"
-                )
-            )
-            else -> comparisons.add(
-                ComparisonItem(
-                    "⚡ Minimal energy usage - very efficient!",
-                    R.drawable.ic_eco_leaf,
-                    "Efficient"
-                )
-            )
-        }
-
-        // Annual perspective
-        val annualCO2 = (co2 * 365) / 1000
-        if (annualCO2 > 1) {
-            val treesNeeded = (annualCO2 / 22).toInt().coerceAtLeast(1)
-            comparisons.add(
-                ComparisonItem(
-                    "🌳 Plant $treesNeeded tree${if (treesNeeded > 1) "s" else ""} to offset annual impact",
-                    R.drawable.ic_eco_leaf,
-                    "Offset"
-                )
-            )
-        }
-
-        return comparisons
-    }
-
     private fun getEnhancedSuggestions(): List<SuggestionItem> {
         val suggestions = mutableListOf<SuggestionItem>()
 
+        // Use fallback suggestions based on impact level
         when (service.impactLevel) {
             com.example.terravue.domain.models.ImpactLevel.HIGH -> {
                 suggestions.add(
                     SuggestionItem(
-                        "Reduce daily usage time",
-                        "Limit to 1-2 hours per day to significantly reduce carbon footprint",
-                        R.drawable.ic_timer,
-                        "High Impact",
-                        "🔴"
+                        title = "Reduce Usage Time",
+                        description = "Limit daily usage to 1-2 hours to significantly reduce carbon footprint",
+                        icon = R.drawable.ic_timer
                     )
                 )
                 suggestions.add(
                     SuggestionItem(
-                        "Enable dark mode",
-                        "Dark themes use less battery and reduce screen energy consumption",
-                        R.drawable.ic_dark_mode,
-                        "Easy Win",
-                        "🟢"
+                        title = "Enable Dark Mode",
+                        description = "Dark themes use less battery and reduce screen energy consumption",
+                        icon = R.drawable.ic_dark_mode
                     )
                 )
                 suggestions.add(
                     SuggestionItem(
-                        "Download content offline",
-                        "Pre-download videos, music, or content to reduce streaming energy",
-                        R.drawable.ic_download,
-                        "Medium Impact",
-                        "🟡"
+                        title = "Download Content Offline",
+                        description = "Pre-download videos, music, or content to reduce streaming energy",
+                        icon = R.drawable.ic_download
                     )
                 )
             }
             com.example.terravue.domain.models.ImpactLevel.MEDIUM -> {
                 suggestions.add(
                     SuggestionItem(
-                        "Optimize app settings",
-                        "Reduce video quality, disable auto-play, limit notifications",
-                        R.drawable.ic_swap,
-                        "Medium Impact",
-                        "🟡"
+                        title = "Optimize Settings",
+                        description = "Reduce video quality, disable auto-play, limit notifications",
+                        icon = R.drawable.ic_swap
                     )
                 )
                 suggestions.add(
                     SuggestionItem(
-                        "Use Wi-Fi when possible",
-                        "Wi-Fi typically uses less energy than mobile data",
-                        R.drawable.ic_eco_tip,
-                        "Easy Win",
-                        "🟢"
+                        title = "Use Wi-Fi When Possible",
+                        description = "Wi-Fi typically uses less energy than mobile data",
+                        icon = R.drawable.ic_eco_tip
                     )
                 )
             }
             com.example.terravue.domain.models.ImpactLevel.LOW -> {
                 suggestions.add(
                     SuggestionItem(
-                        "Excellent choice!",
-                        "This app has minimal environmental impact. Keep using it!",
-                        R.drawable.ic_eco_leaf,
-                        "Great Job",
-                        "✅"
+                        title = "Excellent Choice!",
+                        description = "This app has minimal environmental impact. Keep using it!",
+                        icon = R.drawable.ic_eco_leaf
                     )
                 )
                 suggestions.add(
                     SuggestionItem(
-                        "Consider similar eco-friendly apps",
-                        "Look for productivity and utility apps that minimize energy usage",
-                        R.drawable.ic_eco_tip,
-                        "Recommendation",
-                        "💡"
+                        title = "Consider Similar Apps",
+                        description = "Look for productivity and utility apps that minimize energy usage",
+                        icon = R.drawable.ic_eco_tip
                     )
                 )
             }
@@ -331,79 +266,24 @@ class ServiceDetailsDialogFragment : DialogFragment() {
         return suggestions
     }
 
-    private fun generateCarbonFootprintBreakdown(dailyImpact: com.example.terravue.domain.models.DailyImpact): String {
-        val co2 = dailyImpact.co2Grams
-        val energy = dailyImpact.energyWh
-
-        return buildString {
-            appendLine("📊 Carbon Footprint Breakdown:")
-            appendLine()
-            appendLine("• Device processing: ${String.format("%.1f", co2 * 0.4)}g CO₂")
-            appendLine("• Network transmission: ${String.format("%.1f", co2 * 0.3)}g CO₂")
-            appendLine("• Server infrastructure: ${String.format("%.1f", co2 * 0.3)}g CO₂")
-            appendLine()
-            appendLine("⚡ Energy breakdown:")
-            appendLine("• Screen usage: ${String.format("%.1f", energy * 0.6)}Wh")
-            appendLine("• Data processing: ${String.format("%.1f", energy * 0.4)}Wh")
-        }
-    }
-
-    // Enhanced data classes
-    data class ComparisonItem(
-        val text: String,
-        val iconRes: Int,
-        val category: String
-    )
-
+    // Data class for suggestions
     data class SuggestionItem(
         val title: String,
         val description: String,
-        val iconRes: Int,
-        val impact: String,
-        val emoji: String
+        val icon: Int
     )
 
     /**
-     * Enhanced adapter for environmental comparisons
+     * Simple adapter for eco-friendly suggestions
      */
-    private class EnhancedComparisonsAdapter(
-        private val comparisons: List<ComparisonItem>
-    ) : RecyclerView.Adapter<EnhancedComparisonsAdapter.ComparisonViewHolder>() {
-
-        class ComparisonViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val comparisonText: TextView = view.findViewById(R.id.comparisonText)
-            val comparisonIcon: ImageView = view.findViewById(R.id.comparisonIcon)
-            val comparisonCategory: TextView? = view.findViewById(R.id.comparisonCategory)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ComparisonViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_comparison, parent, false)
-            return ComparisonViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: ComparisonViewHolder, position: Int) {
-            val item = comparisons[position]
-            holder.comparisonText.text = item.text
-            holder.comparisonIcon.setImageResource(item.iconRes)
-            holder.comparisonCategory?.text = item.category
-        }
-
-        override fun getItemCount() = comparisons.size
-    }
-
-    /**
-     * Enhanced adapter for eco-friendly suggestions
-     */
-    private class EnhancedSuggestionsAdapter(
+    private class SuggestionsAdapter(
         private val suggestions: List<SuggestionItem>
-    ) : RecyclerView.Adapter<EnhancedSuggestionsAdapter.SuggestionViewHolder>() {
+    ) : RecyclerView.Adapter<SuggestionsAdapter.SuggestionViewHolder>() {
 
         class SuggestionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val suggestionTitle: TextView = view.findViewById(R.id.suggestionTitle)
             val suggestionText: TextView = view.findViewById(R.id.suggestionText)
             val suggestionIcon: ImageView = view.findViewById(R.id.suggestionIcon)
-            val suggestionImpact: TextView? = view.findViewById(R.id.suggestionImpact)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
@@ -414,13 +294,11 @@ class ServiceDetailsDialogFragment : DialogFragment() {
 
         override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
             val item = suggestions[position]
-            holder.suggestionTitle.text = "${item.emoji} ${item.title}"
+            holder.suggestionTitle.text = item.title
             holder.suggestionText.text = item.description
-            holder.suggestionIcon.setImageResource(item.iconRes)
-            holder.suggestionImpact?.text = item.impact
+            holder.suggestionIcon.setImageResource(item.icon)
         }
 
         override fun getItemCount() = suggestions.size
     }
-
 }
