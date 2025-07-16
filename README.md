@@ -14,8 +14,8 @@
 ## Development
 1. Clone the repository:
    ```bash
-   git clone https://github.com/TerraVueDev/android.git
-   cd android
+   git clone https://github.com/TerraVueDev/mobile.git
+   cd mobile
    ```
 2. Open in Android Studio:
     - Launch Android Studio
